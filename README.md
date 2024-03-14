@@ -1,10 +1,42 @@
 如果只想了解如何使用，请跳转以下页面[点击跳转](#使用链接)
-If you only want to know how to use it, please jump to the following button[点击跳转](#)
+If you only want to know how to use it, please jump to the following button[Click to jump to](#howtouse)
 
 ***The English part of this article was completed by machine translation. If there are any inaccuracies, please notify me in the Issues section***
 
 # HashGUI
  A fan of HashCat created a GUI interface for its convenience in use
+ 
+ ## path
+ 1. Python version: 3.10 and above, no external library, no git required (currently)
+ 2. Hashcat version required: the latest version
+ 3. Platform: Windows platform development, Linux platform available (to be measured in detail)
+ 4. Other requirements: see the official website of hashcat
+
+<span id="howtouse"> use</span> 
+## Using
+Before use, it is important to understand that this * * is just a Python script that assists hashcat in making it more convenient to work * *. The prerequisite for running it is to first select the hashcat you already have
+### Select
+1. You can place hashcat in a folder called Hashcat in Script, and then you can see it in the dropdown menu
+2. You can also click on the three selected points to select the path, so that the next time you open it, the hashcat path will be remembered by default
+### Settings
+Before using hashcat, proper settings are essential. As the software is still in the semi-finished stage, user errors may not be detected by this script. Therefore, the following settings should be filled in correctly before running
+1. Hashcat path
+2. Attack mode
+3. Target Hash Type
+4. Target file
+5. Mask/Dictionary Settings
+### Running
+After setting the above settings, you can click on Run and then use it. In the semi-finished stage, the script will output all the information output by hashcat to the control panel, including the level of cracking. In the finished stage, it will be processed separately
+Step by step is currently available for use
+## Update plan
+In the following updates, I will optimize the script as follows
+1. Mask/Dictionary History
+2. Use existing rulers
+3. Multi task allocation management
+4. Better return and processing of pages
+5. A comprehensive error pre detection mechanism
+
+
 # HashGUI
 一个哈希猫的粉丝，对这个工具有着极大的热情，但是由于操作对于新人过于麻烦，亦或是对于处理小的问题需要较长时间，便用python写了如下工具，为了部分没有足够计算机储备的人，本代码没有使用python默认库以外的外部库
 
@@ -37,8 +69,8 @@ If you only want to know how to use it, please jump to the following button[点�
 
 ## 更新计划
 再接下来的更新中，我将对脚本进行以下优化
-1.掩码/字典历史记录
-2.使用现有ruler
-3.多任务分配管理
-4.更好的返回和处理页面
-5.完善的错误预检测机制
+1. 掩码/字典历史记录
+2. 使用现有ruler
+3. 多任务分配管理
+4. 更好的返回和处理页面
+5. 完善的错误预检测机制

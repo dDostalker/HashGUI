@@ -14,7 +14,7 @@ If you only want to know how to use it, please jump to the following button[Clic
 
 <span id="howtouse"> use</span> 
 ## Using
-Before use, it is important to understand that this * * is just a Python script that assists hashcat in making it more convenient to work * *. The prerequisite for running it is to first select the hashcat you already have
+Before use, it is important to understand that **this is just a Python script that assists hashcat in making it more convenient to work** . The prerequisite for running it is to first select the hashcat you already have
 ### Select
 1. You can place hashcat in a folder called Hashcat in Script, and then you can see it in the dropdown menu
 2. You can also click on the three selected points to select the path, so that the next time you open it, the hashcat path will be remembered by default

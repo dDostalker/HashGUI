@@ -10,10 +10,10 @@ If you only want to know how to use it, please jump to the following button[点�
 
 
 ## 环境
-1.python版本：3.10及以上，无外部库，无需git（目前）
-2.hashcat需要版本：最新版本
-3.平台：Windows平台开发、linux平台可使用（待详细测速）
-4。其他要求：参见hashcat官网
+1. python版本：3.10及以上，无外部库，无需git（目前）
+2. hashcat需要版本：最新版本
+3. 平台：Windows平台开发、linux平台可使用（待详细测速）
+4. 其他要求：参见hashcat官网
 
 <span id="使用链接">使用</span>
 ## 使用
@@ -24,11 +24,11 @@ If you only want to know how to use it, please jump to the following button[点�
    
 ### 设置
 使用hashcat之前，正确的设置是必不可少的，由于软件还在半成品阶段，使用者错误的使用可能不会被这个脚本检测出来，所以要将以下的几个设置正确填写后再运行
-1.hashcat路径
-2.攻击模式
-3.目标Hash类型
-4.目标文件
-5.掩码/字典设置
+1. hashcat路径
+2. 攻击模式
+3. 目标Hash类型
+4. 目标文件
+5. 掩码/字典设置
 
 
 ### 运行

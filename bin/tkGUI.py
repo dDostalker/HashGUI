@@ -1,12 +1,18 @@
 #!/user/bin/env python3
 # -*- coding: utf-8 -*-
-
+import os
+import threading
 import tkinter as tk
 from tkinter import ttk
 from tkinter import *
 import tkinter.filedialog
 from core import HashCatVersion, HashCatLoad
 import core, GetHashAttackMode
+from threading import Thread
+import time
+import subprocess
+import signal
+import copy
 
 HashMode = {}
 
@@ -26,13 +32,14 @@ ForceInt.set(core.ReadForce())
 MachineInt.set(core.ReadMachine())
 
 # 命令语句
-Command_HashCat = ""
-Command_AttackMode = ""
-Command_HashMode = ""
-Command_Dictionary = ""
-Command_Aim = ""
-Command_Mask1 = ""
-Command_Mask2 = ""
+Command_HashCat = " "
+Command_AttackMode = " "
+Command_HashMode = " "
+Command_Dictionary = " "
+Command_Aim = " "
+Command_Mask1 = " "
+Command_Mask2 = " "
+Pids = -1
 
 # 特例全局
 DictionaryLabels = Label(MainWindow, text=Command_Dictionary, background=MainWindows[2],
@@ -76,26 +83,58 @@ def WordSet():
         sets += '--force'
     if MachineInt.get():
         sets += ' --machine-readable '
+
+    # 判断有无空栏
+    if Command_HashCat.isspace():
+        tkinter.messagebox.showerror('错误', '未选中hashcat')
+        return 0
+    elif Command_HashMode.isspace():
+        tkinter.messagebox.showerror('错误', '未选中攻击模式')
+        return 0
+    elif Command_Aim.isspace():
+        tkinter.messagebox.showerror('错误', '未选中攻击目标')
+        return 0
+
     if '0' in Command_AttackMode:  # 单字典攻击
+        if Command_Dictionary.isspace():
+            tkinter.messagebox.showerror('错误', '未填入字典')
+            return 0
         Command = "%s %s %s %s %s %s " % (
             Command_HashCat, sets, Command_HashMode, Command_AttackMode, Command_Aim, Command_Dictionary)
 
     elif '1' in Command_AttackMode:  # 多字典攻击
+        if Command_Dictionary.isspace():
+            tkinter.messagebox.showerror('错误', '未填入字典')
+            return 0
         Command = "%s %s %s %s %s %s " % (
             Command_HashCat, sets, Command_HashMode, Command_AttackMode, Command_Aim, Command_Dictionary)
 
     elif '3' in Command_AttackMode:  # 掩码攻击
+        if Command_Mask2.isspace():
+            tkinter.messagebox.showerror('错误', '未填入掩码')
+            return 0
         Command = "%s %s %s %s %s %s %s" % (
             Command_HashCat, sets, Command_HashMode, Command_AttackMode, Command_Mask1, Command_Aim, Command_Mask2)
 
     elif '6' in Command_AttackMode:  # 混合攻击1
+        if Command_Mask2.isspace() or Command_Dictionary.isspace():
+            tkinter.messagebox.showerror('错误', '未填入字典或掩码')
+            return 0
         Command = "%s %s %s %s %s %s %s " % (
             Command_HashCat, sets, Command_HashMode, Command_AttackMode, Command_Aim, Command_Dictionary, Command_Mask2)
 
     elif '7' in Command_AttackMode:  # 混合攻击2
+        if Command_Mask2.isspace() or Command_Dictionary.isspace():
+            tkinter.messagebox.showerror('错误', '未填入字典或掩码')
+            return 0
         Command = "%s %s %s %s %s %s %s " % (
             Command_HashCat, sets, Command_HashMode, Command_AttackMode, Command_Aim, Command_Mask2, Command_Dictionary)
-    core.RunCommand(Command_HashCat[:-11], Command)
+    global ProcessList
+    if Command in ProcessList:
+        tkinter.messagebox.showwarning('警告', '重复设置代码')
+        return 0
+    ProcessList.append(Command)
+    core.UploadRunList(ProcessList)
 
 
 # 设置资源加载
@@ -106,22 +145,214 @@ def WordSet():
 
 
 # 子窗口
+SonWindowFlag = 0
+ProcessList = []
+
+
+def OpenMenu(event):
+    Menu = tk.Toplevel()
+    local1 = -1
+    StopButton = Button(Menu, text='停止运行')
+    StartButton = Button(Menu, text='开始运行')
+    ProcessLabel1 = Label(Menu, text='当前进度:')
+    ProcessLabel2 = Label(Menu)
+    ProcessReadyList = Listbox(Menu, width=140, height=25)
+    RefreshFlag = 1
+    ProcessListCheck = []
+    flag = 0
+
+    def _Refresh():
+        nonlocal RefreshFlag
+        if flag != 0:
+            tkinter.messagebox.showwarning('警告', '关闭将停止当前运行，不保留进度')
+            try:
+                os.kill(Pids, signal.SIGTERM)
+            except:
+                pass
+        RefreshFlag = 0
+        if t1.is_alive():
+            pass
+        else:
+            Menu.destroy()
+
+    def Refresh():
+        nonlocal local1, ProcessListCheck
+
+        def UpgradeList():
+            nonlocal local1
+
+            try:
+                local1 = ProcessList.index(ProcessReadyList.get(ProcessReadyList.curselection()))
+            except:
+                pass
+            ProcessReadyList.delete(0, 'end')
+            for item in ProcessList:
+                ProcessReadyList.insert("end", core.OutPutCut(item, 150))
+                if local1 == -1:
+                    continue
+                ProcessReadyList.select_set(local1)
+
+        while RefreshFlag:
+            time.sleep(0.5)
+
+            if ProcessList == ProcessListCheck:
+                pass
+            else:
+                ProcessListCheck = copy.copy(ProcessList)
+                UpgradeList()
+
+    def CommandStart():
+        nonlocal flag
+        global Pids
+        ret = ""
+        ret2 = ""
+        ret3 = ""
+        while True:
+            if flag == 0:
+                if len(ProcessList) == 0:
+                    tkinter.messagebox.showwarning('完成', '已经全部运行完毕')
+                    break
+                try:
+                    os.kill(Pids, signal.SIGTERM)
+                except:
+                    pass
+                Command = ProcessList.pop(0)
+                s = subprocess.Popen(
+                    Command,
+                    cwd=str(Command_HashCat[:-11]),  # cmd特定的查询空间的命令
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,  # 标准输入 键盘
+                    encoding='gb2312'
+                )
+
+                core.UploadRunList(ProcessList)  # 同步一下文件
+                Pids = s.pid
+                flag = 1
+                while True:
+                    time.sleep(0.2)
+                    if not ret2.isspace():
+                        ret3 = ret2
+                    if not ret.isspace():
+                        ret2 = ret
+                    ret = s.stdout.readline()
+
+                    print(ret)
+                    if flag == 0:
+                        break
+                    if 'Exhausted' in ret:
+                        core.SaveResult('(%s) default to run hash\n' % Command)
+                        ProcessLabel2.config(text='(%s) default to run hash' % Command)
+                    elif 'Cracked' in ret:
+                        core.SaveResult('(%s) hash value is (%s)\n' % (Command, ret3))
+                        ProcessLabel2.config(text='(%s) hash value is (%s)' % (Command, ret3))
+                    elif 'Use --show to display them' in ret:
+                        tkinter.messagebox.showwarning('存在运行记录',
+                                                       '%s 的目标在先前运行过，请查找历史记录' % (Command))
+                    elif 'Stop' in ret:
+                        flag = 0
+
+                        break
+            else:
+                tkinter.messagebox.showwarning('警告', '存在运行中的hashcat')
+        StartButton['state'] = 'normal'
+        StopButton['state'] = 'disable'
+
+    def Delete(event):
+        try:
+            local = ProcessReadyList.curselection()[0]
+            ProcessReadyList.delete(local)
+            ProcessList.pop(local)
+            nonlocal local1
+            local1 = -1
+            core.UploadRunList(ProcessList)
+
+        except:
+            tkinter.messagebox.showwarning('警告', '没有选中任何值')
+        return
+
+    def ProcessListbox():
+
+        def StopProcess(event):
+            nonlocal flag
+            global Pids
+            StartButton['state'] = 'normal'
+            StopButton['state'] = 'disable'
+            os.kill(Pids, signal.SIGTERM)
+            flag = 0
+            Pids = 0
+            return
+
+        def StartProcess(event):
+            StartButton['state'] = 'disable'
+            StopButton['state'] = 'normal'
+            t2 = threading.Thread(target=CommandStart)
+            t2.start()
+            return
+
+        ProcessListBar = Scrollbar(Menu)
+        ProcessListBar.config(command=ProcessReadyList.yview)
+        ProcessListBar.pack(side="right", fill="y")
+        for item in ProcessList:
+            ProcessReadyList.insert("end", core.OutPutCut(item, 150))
+        ProcessReadyList.pack()
+
+        def Buttons():
+            DeleteButton = Button(Menu, text='删除')
+            StopButton.bind('<ButtonPress-1>', StopProcess)
+            StartButton.bind('<ButtonPress-1>', StartProcess)
+            DeleteButton.bind('<ButtonPress-1>', Delete)
+            StopButton['state'] = 'disable'
+            StartButton.pack(side="left")
+            StopButton.pack(side="left")
+            DeleteButton.pack(side="right")
+            ProcessLabel1.pack(side="left")
+            ProcessLabel2.pack(side="left")
+
+            ProcessReadyList.config(yscrollcommand=ProcessListBar.set)
+
+        return Buttons()
+
+    Menu.geometry('1000x600')
+    Menu.resizable(False, False)
+    Menu.title('缓存hash值')
+    ProcessListbox()
+
+    t1 = Thread(target=Refresh)
+    t1.start()
+    Menu.protocol("WM_DELETE_WINDOW", _Refresh)
+    Menu.mainloop()
+    return
+
+
 # 查看历史
 def HistoryWindow():
+    global SonWindowFlag
+    if SonWindowFlag == 1:
+        tkinter.messagebox.showwarning('存在打开的子窗口', '检查有无打开的窗口，请先完成上一个子窗口后再继续')
+        return
     HistoryShowWindow = tk.Toplevel()
+    SonWindowFlag = 1
+    HistoryList = Listbox(HistoryShowWindow, width=70, height=25)
+
+    def _HistoryWindow():
+        global SonWindowFlag
+        SonWindowFlag = 0
+        HistoryShowWindow.destroy()
 
     def HistoryListbox():
         def ClearFunc(event):
             if core.ClearHistory(Command_HashCat[:-11]):
+                HistoryList.delete(0, 'end')
+                for item in core.GetHistory(Command_HashCat[:-11]):
+                    HistoryList.insert("end", core.OutPutCut(item, 70))
                 tkinter.messagebox.showwarning('通知', '清除成功')
             else:
                 tkinter.messagebox.showerror('错误', '清除失败')
 
-        HistoryList = Listbox(HistoryShowWindow, width=70, height=25)
         HistoryListBar = Scrollbar(HistoryShowWindow)
         HistoryListBar.config(command=HistoryList.yview)
         HistoryListBar.pack(side="right", fill="y")
-        for item in core.ReadHistory(Command_HashCat[:-11]):
+        for item in core.GetHistory(Command_HashCat[:-11]):
             HistoryList.insert("end", core.OutPutCut(item, 70))
         HistoryList.pack()
         ClearHistoryButton = Button(HistoryShowWindow, text='清除全部记录')
@@ -131,14 +362,21 @@ def HistoryWindow():
 
     HistoryShowWindow.geometry('600x500')
     HistoryShowWindow.resizable(False, False)
-    HistoryShowWindow.title('缓存hash值')
+    HistoryShowWindow.title('历史hash')
     HistoryListbox()
+    HistoryShowWindow.protocol("WM_DELETE_WINDOW", _HistoryWindow)
     HistoryShowWindow.mainloop()
 
 
 # 混合攻击
 def StartMix1(value):
     DictionaryLoad = ""
+
+    global SonWindowFlag
+    if SonWindowFlag == 1:
+        tkinter.messagebox.showwarning('存在打开的子窗口', '检查有无打开的窗口，请先完成上一个子窗口后再继续')
+        return
+    SonWindowFlag = 1
     MixWindow = tk.Toplevel()
     if value == 0:
         title = "混合攻击1(掩码在后)"
@@ -149,10 +387,18 @@ def StartMix1(value):
     MaskSet = tk.IntVar()
     MaskSet.set(0)
 
+    def _StartMix1():
+        global SonWindowFlag
+        SonWindowFlag = 0
+        MixWindow.destroy()
+
     def DictionaryChoose():
         def SelectPath(event):
             # 选择文件path_接收文件地址
             path_ = tkinter.filedialog.askopenfilename()
+            if '.txt' not in path_:
+                tkinter.messagebox.showerror('错误', '请使用txt格式字典')
+                return
             nonlocal DictionaryLoad
             DictionaryLoad = path_
             Label2.config(text=core.OutPutCut(DictionaryLoad, 72))
@@ -202,7 +448,7 @@ def StartMix1(value):
                 DictionaryLabel(Command_Dictionary + ' ' + Command_Mask2)
             else:
                 DictionaryLabel(Command_Mask2 + ' ' + Command_Dictionary)
-            MixWindow.destroy()
+            _StartMix1()
 
         FillButton = Button(MixWindow, text='填充')
         FillButton.bind("<ButtonPress-1>", FillMask)
@@ -215,6 +461,7 @@ def StartMix1(value):
     RadioButtons()
     DictionaryChoose()
     SetCertainButton()
+    MixWindow.protocol("WM_DELETE_WINDOW", _StartMix1)
     MixWindow.mainloop()
 
 
@@ -222,6 +469,11 @@ def StartMix1(value):
 def StartChooseAimGUI(event):
     # 单选按钮共用变量
     Aim = ""
+    global SonWindowFlag
+    if SonWindowFlag == 1:
+        tkinter.messagebox.showwarning('存在打开的子窗口', '检查有无打开的窗口，请先完成上一个子窗口后再继续')
+        return
+    SonWindowFlag = 1
     ChooseAimWindow = tk.Toplevel()
     v = tk.IntVar()
     v.set(2)
@@ -231,15 +483,20 @@ def StartChooseAimGUI(event):
     InputBoxText = Text(ChooseAimWindow, width=50, height=8)
     CommandAimButton = Button(ChooseAimWindow, text='确定')
 
+    def _StartChooseAimGUI():
+        global SonWindowFlag
+        SonWindowFlag = 0
+        ChooseAimWindow.destroy()
+
     def AutoChooseMode(Load):
         global Command_HashMode, Command_Aim
         AttackMode = core.CommandSet(Load)
-        print(AttackMode)
+
         if AttackMode != '' and v.get() == 1:
             Command_HashMode = '-m ' + str(HashMode[AttackMode])
+            HashModeCombobox.set(AttackMode)
             HashModeLabels.config(text=Command_HashMode)
             HashModeLabels.place(x=600, y=150)
-            print(Command_HashMode)
 
     def SelectPath(event):
         # 选择文件path_接收文件地址
@@ -258,11 +515,13 @@ def StartChooseAimGUI(event):
         global Command_Aim
         if v.get() == 1:
             Command_Aim = Aim
+            AutoChooseMode(Command_Aim)
         elif v.get() == 2:
             Command_Aim = InputBoxText.get('0.0', 'end')[:-1]
+
         AimLabel(Command_Aim)
-        AutoChooseMode(Command_Aim)
-        CommandAimButton['command'] = ChooseAimWindow.destroy
+
+        CommandAimButton['command'] = _StartChooseAimGUI
 
     ChooseAimWindow.geometry('600x200')
     ChooseAimWindow.resizable(False, False)  # 能否调整大小
@@ -271,6 +530,7 @@ def StartChooseAimGUI(event):
     Box()
     CommandAimButton.place(x=550, y=160)
     CommandAimButton.bind("<ButtonPress-1>", UpLoadAim)
+    ChooseAimWindow.protocol("WM_DELETE_WINDOW", _StartChooseAimGUI)
     ChooseAimWindow.mainloop()
     return
 
@@ -279,13 +539,22 @@ def StartChooseAimGUI(event):
 def MaskAttack():
     MaskSet = tk.IntVar()
     MaskSet.set(0)
-
+    global SonWindowFlag
+    if SonWindowFlag == 1:
+        tkinter.messagebox.showwarning('存在打开的子窗口', '检查有无打开的窗口，请先完成上一个子窗口后再继续')
+        return
+    SonWindowFlag = 1
     MaskAttackWindow = tk.Toplevel()
     MaskTextbox = Text(MaskAttackWindow, width=80, height=8)
     LengthSetSpin = Spinbox(MaskAttackWindow, from_=1, to=4096)
     MinSpin = Spinbox(MaskAttackWindow, from_=1, to=4096)
     MaxSpin = Spinbox(MaskAttackWindow, from_=1, to=4096)
     maps = ['?l', '?u', '?d', '?h', '?H', '?s', '?a', '?f']
+
+    def _MaskAttack():
+        global SonWindowFlag
+        SonWindowFlag = 0
+        MaskAttackWindow.destroy()
 
     def RadioButtons():
         text = ['英文小写', '英文大写', '数字', '小写16进制', '大写16进制', '符号', '全部可见字符', '全部字符']
@@ -330,7 +599,7 @@ def MaskAttack():
             tkinter.messagebox.showerror('错误', '掩码个数过多')
             return
         DictionaryLabel(Command_Mask2)
-        MaskAttackWindow.destroy()
+        _MaskAttack()
 
     # 确认键
     def SetCertainButton():
@@ -347,6 +616,7 @@ def MaskAttack():
     SetCertainButton()
     RadioButtons()
     SetLength()
+    MaskAttackWindow.protocol('WM_DELETE_WINDOW', _MaskAttack)
     MaskAttackWindow.mainloop()
 
 
@@ -354,6 +624,11 @@ def MaskAttack():
 def ChooseDictionary(mode):
     DictionaryLoad = " "
     DictionaryLoad2 = " "
+    global SonWindowFlag
+    if SonWindowFlag == 1:
+        tkinter.messagebox.showwarning('存在打开的子窗口', '检查有无打开的窗口，请先完成上一个子窗口后再继续')
+        return
+    SonWindowFlag = 1
     ChooseDictionaryWindow = tk.Toplevel()
     DictionaryFLoadLabel = Label(ChooseDictionaryWindow, text=core.OutPutCut(DictionaryLoad, 68))
     DictionarySLoadLabel = Label(ChooseDictionaryWindow, text=core.OutPutCut(DictionaryLoad2, 68))
@@ -361,6 +636,11 @@ def ChooseDictionary(mode):
     ChooseDictionarySButton = Button(ChooseDictionaryWindow, text='选择字典2')
     ChooseDictionaryFButton = Button(ChooseDictionaryWindow, text='选择字典1')
     DictionaryMidText = Text(ChooseDictionaryWindow, width=70, height=1)
+
+    def _ChooseDictionary():
+        global SonWindowFlag
+        SonWindowFlag = 0
+        ChooseDictionaryWindow.destroy()
 
     def DictionLabel():
 
@@ -375,6 +655,10 @@ def ChooseDictionary(mode):
     def SelectPath(event):
         # 选择文件path_接收文件地址
         path_ = tkinter.filedialog.askopenfilename()
+        if '.txt' not in path_:
+            tkinter.messagebox.showerror('错误', '请使用txt格式字典')
+            return
+
         nonlocal DictionaryLoad
         DictionaryLoad = path_
         DictionaryFLoadLabel.config(text=core.OutPutCut(DictionaryLoad, 68))
@@ -382,6 +666,9 @@ def ChooseDictionary(mode):
     def SelectPath2(event):
         # 选择文件path_接收文件地址
         path_ = tkinter.filedialog.askopenfilename()
+        if '.txt' not in path_:
+            tkinter.messagebox.showerror('错误', '请使用txt格式字典')
+            return
         nonlocal DictionaryLoad2
         DictionaryLoad2 = path_
         DictionarySLoadLabel.config(text=core.OutPutCut(DictionaryLoad2, 68))
@@ -396,7 +683,7 @@ def ChooseDictionary(mode):
         else:
             Command_Dictionary = DictionaryLoad + ' ' + DictionaryLoad2
         DictionaryLabel(Command_Dictionary)
-        CertainButton['command'] = ChooseDictionaryWindow.destroy
+        CertainButton['command'] = _ChooseDictionary
 
     def ChooseDictionarys():
         ChooseDictionaryFButton.bind("<ButtonPress-1>", SelectPath)
@@ -421,6 +708,7 @@ def ChooseDictionary(mode):
     DictionLabel()
     ChooseDictionarys()
     DictionaryMidText.place(x=75, y=70)
+    ChooseDictionaryWindow.protocol('WM_DELETE_WINDOW', _ChooseDictionary)
     ChooseDictionaryWindow.mainloop()
     return
 
@@ -467,17 +755,23 @@ def MainWindowBoard():
                                 height=27)  # 使用截取，截前半部分的屏幕长度
             MoveTitle = Canvas(MainWindow, bg=MainWindowBoards[0][1], width=MainWindows[3].split('x')[0] + str(50),
                                height=1)
+            SplitBar = Canvas(MainWindow, bg=MainWindowBoards[0][1], width=1, height=400)
             MoveTitle.config(highlightthickness=False)
+            SplitBar.config(highlightthickness=False)
             MoveButton.config(highlightthickness=False)  # 取消边框
             MoveButton.bind("<ButtonPress-1>", drag_start)  # 按下处理
             MoveButton.bind("<B1-Motion>", drag_motion)  # 移动处理
+            SplitBar.place(x=720, y=27)
             MoveButton.place(x=0, y=0)
             MoveTitle.place(x=0, y=27)
 
         def CloseButtonFun():
             # 关闭按钮
             def func():
-                core.KillCommand()
+                try:
+                    os.kill(Pids, signal.SIGTERM)
+                except:
+                    pass
                 MainWindow.destroy()
 
             def CloseMainWindow():
@@ -614,6 +908,7 @@ def MainWindowBoard():
     def ChooseHashMode():
 
         def ShowHashCatModeLabel():
+            HashModeLabels.config(text=Command_HashMode)
             HashModeLabels.place(x=600, y=150)
 
         def ChooseHashModeLabel():
@@ -726,20 +1021,14 @@ def MainWindowBoard():
             StartButton = Button(text='-运行-', bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
             StartButton.config(highlightthickness=False, borderwidth=0)
             StartButton.bind("<Button-1>", StartRunCommand)
-            StartButton.place(x=550, y=350)
+            StartButton.place(x=600, y=350)
 
-        def KillHashCat():
-            def KillPid(event):
-                ret = core.KillCommand()
-                if ret == -1:
-                    tkinter.messagebox.showerror("错误", "当前没有正在运行的hashcat")
+            MenuHashCatButton = Button(text='运行目录', bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
+            MenuHashCatButton.config(highlightthickness=False, borderwidth=0)
+            MenuHashCatButton.bind("<Button-1>", OpenMenu)
+            MenuHashCatButton.place(x=650, y=350)
 
-            KillHashCatButton = Button(text='终止操作', bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
-            KillHashCatButton.config(highlightthickness=False, borderwidth=0)
-            KillHashCatButton.bind("<Button-1>", KillPid)
-            KillHashCatButton.place(x=650, y=350)
-
-        return GUIStartButton(), KillHashCat()
+        return GUIStartButton()
 
     return (TitleMap(), ChooseHashCatVersion(), ChooseAttackMode(), ChooseHashMode(), ChooseMaskMode(), Sidebar(),
             ChooseAimButton(), LowerRight())
@@ -747,11 +1036,13 @@ def MainWindowBoard():
 
 if __name__ == '__main__':
     if core.CudaTest() == 0:
-        HashMode = core.ReadingAttackMode()
-        MainWindows[5] = True
-        MainWindowBoard()
-        # 窗口运行
-        MainWindow.mainloop()
+        pass
     else:
         MainWindows[5] = False
         tkinter.messagebox.showwarning("警告", "没有找到cuda，hashcat将使用cpu运算，无法达到最高性能")
+    HashMode = core.ReadingAttackMode()
+    ProcessList = list(core.GetRunList())
+    MainWindows[5] = True
+    MainWindowBoard()
+    # 窗口运行
+    MainWindow.mainloop()

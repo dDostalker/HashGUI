@@ -5,7 +5,7 @@ If you only want to know how to use it, please jump to the following button[Clic
 
 # HashGUI
  A fan of HashCat created a GUI interface for its convenience in use
- 
+
  ## path
  1. Python version: 3.10 and above, no external library, no git required (currently)
  2. Hashcat version required: the latest version
@@ -46,6 +46,7 @@ In the following updates, I will optimize the script as follows
 2. hashcat需要版本：最新版本
 3. 平台：Windows平台开发、linux平台可使用（待详细测速）
 4. 其他要求：参见hashcat官网
+4. 使用的环境
 
 <span id="使用链接">使用</span>
 ## 使用

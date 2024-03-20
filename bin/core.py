@@ -1,9 +1,7 @@
 import os
 import json
 import subprocess
-import signal
-from threading import Thread
-
+import time
 
 ZipCatRunLoad = os.getcwd()  # ./ZipCat/bin/ 程序运行时位置
 
@@ -15,6 +13,7 @@ HashCatLoad = []
 HashCatVersion = []
 data = {'path': '', 'Dictionary': []}
 flag = 0
+RunningList = {}
 # 查找hashcat地址
 for file in os.listdir(HashCatFiles):
     if "hashcat-" in file:
@@ -23,6 +22,8 @@ for file in os.listdir(HashCatFiles):
 # 读取设置
 with open(RootLoad + "\\data\\Setting.json", 'r') as f:
     data = json.load(f)
+with open(RootLoad + "\\data\\RunningList.json", 'r') as file:
+    RunningList = json.load(file)
 
 
 # 保存Hashcat路径
@@ -62,41 +63,11 @@ def FileCheck(FileLoad):
 PidList1 = 0
 
 
-def RunCommand(Load, HashCommands):
-    global PidList1
-    print(HashCommands)
-    print(Load)
-    if len(HashCommands) > 3:
-        KillCommand()
-        s = subprocess.Popen(
-            HashCommands,
-            cwd=str(Load),  # cmd特定的查询空间的命令
-            stdin=None,  # 标准输入 键盘
-            encoding='gb2312'
-        )
-        PidList1 = s.pid
-    else:
-        return -1
-
-
 def ReadingAttackMode():
     global RootLoad
     with open(RootLoad + 'data\\AttackMode.json', 'r') as file:
         Dictionary = json.load(file)
     return Dictionary
-
-
-def KillCommand():
-    global PidList1
-    if PidList1 != 0:
-        try:
-            os.kill(PidList1, signal.SIGTERM)
-            PidList1 = 0
-        except:
-            PidList1 = 0
-            return -1
-    else:
-        return -1
 
 
 # 运行
@@ -125,11 +96,23 @@ def ReadHistory(Load):
         return HistoryList
 
 
+# 删除历史记录
 def ClearHistory(Load):
     HistoryLoad = Load + 'hashcat.potfile'
     with open(HistoryLoad, 'w') as file:
         pass
     return True
+
+
+# 读取历史记录
+
+def GetHistory(Load):
+    HistoryList = []
+    HistoryLoad = Load + 'hashcat.potfile'
+    with open(HistoryLoad, 'r') as file:
+        for elem in file.readlines():
+            HistoryList.append(elem)
+    return HistoryList
 
 
 # 防止词过长
@@ -162,20 +145,35 @@ def ReadMachine():
     return data['Machine']
 
 
+def GetRunList():
+    global RunningList
+    with open(RootLoad + "\\data\\RunningList.json", 'r') as file:
+        RunningList = json.load(file)
+    return RunningList
+
+
+def UploadRunList(List):
+    with open(RootLoad + "\\data\\RunningList.json", 'w') as file:
+        json.dump(List, file)
+    return True
+
+
+# 自动匹配攻击类型
+
 def CommandSet(form):
     form = str(form).split('.')[1]
     SuffixDictionary = {'7z': '7-Zip', 'hc22000': 'WPA-PBKDF2-PMKID+EAPOL'}
     Commands = ""
-    CommandAim = ""
     try:
         Commands = SuffixDictionary[form]
     except:
         pass
-    print(Commands,form)
+    print(Commands, form)
     return Commands
 
 
-# 测试
+# 存储结果
+def SaveResult(Res):
 
-if __name__ == '__main__':
-    print(ReadHistory('D:\\tools\\ZipCat_GUI\\hashcat\\hashcat-6.2.6\\'))
+    with open(RootLoad+'\\data\\Result\\%s'%time.strftime('%y_%m_%d_%H.txt',time.localtime()),'a') as f:
+        f.write(Res)

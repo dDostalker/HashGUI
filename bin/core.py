@@ -178,3 +178,7 @@ def CommandSet(form):
 def SaveResult(Res):
     with open(RootLoad + '\\data\\Result\\%s' % time.strftime('%y_%m_%d_%H.txt', time.localtime()), 'a') as f:
         f.write(Res)
+
+def RunLog(Res):
+    with open(RootLoad + '\\data\\log\\%s' % time.strftime('%y_%m_%d_%H.log', time.localtime()), 'a') as f:
+        f.write(Res)

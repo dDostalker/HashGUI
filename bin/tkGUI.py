@@ -82,7 +82,7 @@ def WordSet():
     if ForceInt.get():
         sets += '--force'
     if MachineInt.get():
-        sets += ' --machine-readable '
+        sets += ' ----username '
 
     # 判断有无空栏
     if Command_HashCat.isspace():
@@ -135,7 +135,6 @@ def WordSet():
         return 0
     ProcessList.append(Command)
     core.UploadRunList(ProcessList)
-
 
 # 设置资源加载
 # 边框是否加长标志
@@ -235,8 +234,7 @@ def OpenMenu(event):
                     if not ret.isspace():
                         ret2 = ret
                     ret = s.stdout.readline()
-
-                    print(ret)
+                    core.RunLog(ret)
                     if flag == 0:
                         break
                     if 'Exhausted' in ret:
@@ -250,7 +248,6 @@ def OpenMenu(event):
                                                        '%s 的目标在先前运行过，请查找历史记录' % (Command))
                     elif 'Stop' in ret:
                         flag = 0
-
                         break
             else:
                 tkinter.messagebox.showwarning('警告', '存在运行中的hashcat')
@@ -991,7 +988,7 @@ def MainWindowBoard():
 
         def SetForce():
             ForceSetButton = Checkbutton(text='忽略警告', variable=ForceInt)
-            MachineSetButton = Checkbutton(text='简单输出模式', variable=MachineInt)
+            MachineSetButton = Checkbutton(text='忽略username', variable=MachineInt)
             ForceSetButton.config(bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
             ForceSetButton.bind("<Button-1>", lambda event: core.SetForce(not ForceInt.get()))
             MachineSetButton.config(bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
@@ -1004,7 +1001,12 @@ def MainWindowBoard():
         def ClearData():
 
             def ClearDataCommand(event):
-                core.RunCommand(Command_HashCat[:-11], Command_HashCat + ' -b')
+                if Command_HashCat != "":
+
+                    ProcessList.append(Command_HashCat + ' -b')
+                    core.UploadRunList(ProcessList)
+                else:
+                    tkinter.messagebox.showerror('错误','请先选中hashcat位置')
 
             ClearDataButton = Button(text='测试速度', bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
             ClearDataButton.config(highlightthickness=False, borderwidth=0)
@@ -1018,7 +1020,7 @@ def MainWindowBoard():
             def StartRunCommand(event):
                 WordSet()
 
-            StartButton = Button(text='-运行-', bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
+            StartButton = Button(text='-填装-', bg=MainWindowBoards[0][0], fg=MainWindowBoards[0][1])
             StartButton.config(highlightthickness=False, borderwidth=0)
             StartButton.bind("<Button-1>", StartRunCommand)
             StartButton.place(x=600, y=350)

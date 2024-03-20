@@ -5,9 +5,9 @@ import time
 
 ZipCatRunLoad = os.getcwd()  # ./ZipCat/bin/ 程序运行时位置
 
-RootLoad = ZipCatRunLoad[:-3]  # 程序运行的根目录
+RootLoad = ZipCatRunLoad  # 程序运行的根目录
 
-HashCatFiles = RootLoad + "hashcat\\"  # hashcat 储存不同版本hashcat的目录
+HashCatFiles = RootLoad + "\\hashcat\\"  # hashcat 储存不同版本hashcat的目录
 SuffixList = []
 HashCatLoad = []
 HashCatVersion = []
@@ -15,10 +15,12 @@ data = {'path': '', 'Dictionary': []}
 flag = 0
 RunningList = {}
 # 查找hashcat地址
+
 for file in os.listdir(HashCatFiles):
     if "hashcat-" in file:
         HashCatLoad.append(HashCatFiles + file + '\\Hashcat.exe')
         HashCatVersion.append(file)
+
 # 读取设置
 with open(RootLoad + "\\data\\Setting.json", 'r') as f:
     data = json.load(f)
@@ -65,7 +67,7 @@ PidList1 = 0
 
 def ReadingAttackMode():
     global RootLoad
-    with open(RootLoad + 'data\\AttackMode.json', 'r') as file:
+    with open(RootLoad + '\\data\\AttackMode.json', 'r') as file:
         Dictionary = json.load(file)
     return Dictionary
 
@@ -174,6 +176,5 @@ def CommandSet(form):
 
 # 存储结果
 def SaveResult(Res):
-
-    with open(RootLoad+'\\data\\Result\\%s'%time.strftime('%y_%m_%d_%H.txt',time.localtime()),'a') as f:
+    with open(RootLoad + '\\data\\Result\\%s' % time.strftime('%y_%m_%d_%H.txt', time.localtime()), 'a') as f:
         f.write(Res)
